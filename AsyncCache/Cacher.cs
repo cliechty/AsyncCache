@@ -83,8 +83,6 @@ namespace AsyncCache
     class CacheValue
     {
         private CacheValueState currentState = CacheValueState.Loading;
-        private volatile object StateLock = new object();
-        private volatile object DataLock = new object();
 
         public object Value { get; set; }
         public DateTime ExpirationTime { get; set; }
