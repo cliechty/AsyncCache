@@ -5,7 +5,7 @@
 Installation
 ============
 
-Install using nuget. The Package is named AsyncCache
+Install using nuget. The Package is named AsyncCache (not yet available)
 
 Usage
 =====
