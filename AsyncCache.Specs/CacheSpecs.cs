@@ -18,7 +18,7 @@ namespace AsyncCache.Specs
             cached.GetData("test").Returns("test data");
 
             //Act
-            string result = Cacher.Get(cacheKey: "key", dataProvider: () => cached.GetData("test"), cacheTimeInMinutes: 10) as string;
+            string result = Cacher.Get(cacheKey: "key", dataProvider: () => cached.GetData("test"), cacheTimeInMinutes: 10);
 
             //Assert
             result.Should().Be("test data");
@@ -32,8 +32,8 @@ namespace AsyncCache.Specs
             cached.GetData("test").Returns("testing data");
 
             //Act
-            string call1Result = Cacher.Get("cacheKey", () => cached.GetData("test")) as string;
-            string call2Result = Cacher.Get("cacheKey", () => cached.GetData("xxx")) as string;
+            string call1Result = Cacher.Get("cacheKey", () => cached.GetData("test"));
+            string call2Result = Cacher.Get("cacheKey", () => cached.GetData("xxx"));
 
             //Assert
             cached.Received(1).GetData(Arg.Any<string>());
@@ -53,12 +53,12 @@ namespace AsyncCache.Specs
             // Initial action loads the data syncronously
             Task<string> call1Result =
                 Task.Factory.StartNew<string>(() =>
-                        Cacher.Get(theKey, () => cached.GetViaLongProcess("1"), 10) as string
+                        Cacher.Get(theKey, () => cached.GetViaLongProcess("1"), 10)
                 );
             // Now getDataWill change its result
             Task<string> call2Result =
                 Task.Factory.StartNew<string>(() =>
-                    Cacher.Get(theKey, () => cached.GetViaLongProcess("2"), 10) as string
+                    Cacher.Get(theKey, () => cached.GetViaLongProcess("2"), 10)
                     );
             // Make sure we have the cached value
             call2Result.Result.Should().Be(call1Result.Result, "Call 2 result did not equal Call 1 result");
@@ -66,13 +66,13 @@ namespace AsyncCache.Specs
             // Advance time 
             Clock.UtcNow = () => new DateTime(2013, 1, 1, 0, 11, 0); // 1/1/2013 0:11:0
             // This call will kick off the loading behind the scenes, the value returned will be the cached value
-            string call3Result = Cacher.Get(theKey, () => cached.GetViaLongProcess("2"), 10) as string;
+            string call3Result = Cacher.Get(theKey, () => cached.GetViaLongProcess("2"), 10);
             call3Result.Should().Be(call1Result.Result, "Call 3 result did not equal Call 1 result");
 
             // This call should return the new value from the cache
             //Pause enough time for the cache to get refreshed
             Thread.Sleep(TimeSpan.FromSeconds(6));
-            string call4Result = Cacher.Get(theKey, () => cached.GetViaLongProcess("3"), 10) as string;
+            string call4Result = Cacher.Get(theKey, () => cached.GetViaLongProcess("3"), 10);
             call4Result.Should().Be("2", "Call 4 Result did not equal the new value");
 
             //Assert

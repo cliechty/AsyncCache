@@ -16,18 +16,18 @@ namespace AsyncCache
             return keyLockDictionary.GetOrAdd(key, new object());
         }
 
-        public static object Get(string cacheKey, Func<object> dataProvider, int cacheTimeInMinutes = 10)
+        public static T Get<T>(string cacheKey, Func<T> dataProvider, int cacheTimeInMinutes = 10)
         {
             object keyLockObj = LockForKey(cacheKey);
 
-            CacheValue value = GetCacheValueFor(cacheKey);
+            CacheValue<T> value = GetCacheValueFor<T>(cacheKey);
             if (value == null)
             {
                 lock (keyLockObj) {
-                    value = GetCacheValueFor(cacheKey);
+                    value = GetCacheValueFor<T>(cacheKey);
                     if (value == null)
                     {
-                        value = new CacheValue()
+                        value = new CacheValue<T>()
                         {
                             CurrentState = CacheValueState.Loading,
                             ExpirationTime = GetExpirationTime(cacheTimeInMinutes)
@@ -46,7 +46,7 @@ namespace AsyncCache
                 {
                     lock (keyLockObj)
                     {
-                        value = GetCacheValueFor(cacheKey);
+                        value = GetCacheValueFor<T>(cacheKey);
                     }
                 }
                 if (value.CurrentState == CacheValueState.Live && Clock.UtcNow() >= value.ExpirationTime)
@@ -75,17 +75,17 @@ namespace AsyncCache
             return Clock.UtcNow().AddMinutes(lifeTimeMinutes);
         }
 
-        private static CacheValue GetCacheValueFor(string key)
+        private static CacheValue<T> GetCacheValueFor<T>(string key)
         {
-            return MemoryCache.Default[key] as CacheValue;
+            return MemoryCache.Default[key] as CacheValue<T>;
         }
     }
 
-    class CacheValue
+    class CacheValue<T>
     {
         private CacheValueState currentState = CacheValueState.Loading;
 
-        public object Value { get; set; }
+        public T Value { get; set; }
         public DateTime ExpirationTime { get; set; }
         public CacheValueState CurrentState
         {
