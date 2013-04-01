@@ -62,6 +62,7 @@ namespace AsyncCache
                     {
                         value.CurrentState = CacheValueState.Live;
                         value.ExpirationTime = GetExpirationTime(cacheTimeInMinutes);
+                        MemoryCache.Default.Set(cacheKey, value, DateTime.Now.AddMinutes(cacheTimeInMinutes * 2));
                     });
                 }
             }
