@@ -1,7 +1,7 @@
-﻿using System;
+﻿using FluentAssertions;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-using FluentAssertions;
 using NSubstitute;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -18,7 +18,7 @@ namespace AsyncCache.Specs
             cached.GetData("test").Returns("test data");
 
             //Act
-            string result = Cacher.Get(cacheKey: "key", dataProvider: () => cached.GetData("test"), cacheTimeInMinutes: 10);
+            string result = Cacher.Get(cacheKey: "key", dataProvider: () => cached.GetData("test"), refreshIn: TimeSpan.FromMinutes(10));
 
             //Assert
             result.Should().Be("test data");
@@ -53,12 +53,12 @@ namespace AsyncCache.Specs
             // Initial action loads the data syncronously
             Task<string> call1Result =
                 Task.Factory.StartNew<string>(() =>
-                        Cacher.Get(theKey, () => cached.GetViaLongProcess("1"), 10)
+                        Cacher.Get(theKey, () => cached.GetViaLongProcess("1"))
                 );
             // Now getDataWill change its result
             Task<string> call2Result =
                 Task.Factory.StartNew<string>(() =>
-                    Cacher.Get(theKey, () => cached.GetViaLongProcess("2"), 10)
+                    Cacher.Get(theKey, () => cached.GetViaLongProcess("2"))
                     );
             // Make sure we have the cached value
             call2Result.Result.Should().Be(call1Result.Result, "Call 2 result did not equal Call 1 result");
@@ -66,13 +66,13 @@ namespace AsyncCache.Specs
             // Advance time 
             Clock.UtcNow = () => new DateTime(2013, 1, 1, 0, 11, 0); // 1/1/2013 0:11:0
             // This call will kick off the loading behind the scenes, the value returned will be the cached value
-            string call3Result = Cacher.Get(theKey, () => cached.GetViaLongProcess("2"), 10);
+            string call3Result = Cacher.Get(theKey, () => cached.GetViaLongProcess("2"));
             call3Result.Should().Be(call1Result.Result, "Call 3 result did not equal Call 1 result");
 
             // This call should return the new value from the cache
             //Pause enough time for the cache to get refreshed
             Thread.Sleep(TimeSpan.FromSeconds(6));
-            string call4Result = Cacher.Get(theKey, () => cached.GetViaLongProcess("3"), 10);
+            string call4Result = Cacher.Get(theKey, () => cached.GetViaLongProcess("3"));
             call4Result.Should().Be("2", "Call 4 Result did not equal the new value");
 
             //Assert

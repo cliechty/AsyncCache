@@ -1,9 +1,6 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.Caching;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace AsyncCache
@@ -11,32 +8,48 @@ namespace AsyncCache
     public class Cacher
     {
         private static ConcurrentDictionary<string, object> keyLockDictionary = new ConcurrentDictionary<string, object>();
+        private static CacheSettings settings = new CacheSettings();
+        private static object settingsLock = new object();
 
-        private static object LockForKey(string key) {
-            return keyLockDictionary.GetOrAdd(key, new object());
+        public static CacheSettings Settings
+        {
+            get { return settings; }
+            set
+            {
+                lock (settingsLock)
+                {
+                    settings = value;
+                }
+            }
         }
 
-        public static T Get<T>(string cacheKey, Func<T> dataProvider, int cacheTimeInMinutes = 10)
+        public static T Get<T>(string cacheKey, Func<T> dataProvider)
+        {
+            return Get(cacheKey, dataProvider, TimeSpan.FromMinutes(10));
+        }
+
+        public static T Get<T>(string cacheKey, Func<T> dataProvider, TimeSpan refreshIn)
         {
             object keyLockObj = LockForKey(cacheKey);
 
             CacheValue<T> value = GetCacheValueFor<T>(cacheKey);
             if (value == null)
             {
-                lock (keyLockObj) {
+                lock (keyLockObj)
+                {
                     value = GetCacheValueFor<T>(cacheKey);
                     if (value == null)
                     {
                         value = new CacheValue<T>()
                         {
                             CurrentState = CacheValueState.Loading,
-                            ExpirationTime = GetExpirationTime(cacheTimeInMinutes)
+                            ExpirationTime = GetRefreshTime(refreshIn)
                         };
-                        MemoryCache.Default.Add(cacheKey, value, DateTime.Now.AddMinutes(cacheTimeInMinutes * 2));
+                        MemoryCache.Default.Add(cacheKey, value, Clock.Now().Add(Settings.MaxTimeInCache));
 
                         value.Value = dataProvider();
                         value.CurrentState = CacheValueState.Live;
-                        value.ExpirationTime = GetExpirationTime(cacheTimeInMinutes);
+                        value.ExpirationTime = GetRefreshTime(refreshIn);
                     }
                 }
             }
@@ -54,50 +67,35 @@ namespace AsyncCache
                     // Time to reload
                     lock (keyLockObj)
                     {
-                        if (value.CurrentState == CacheValueState.Live){
+                        if (value.CurrentState == CacheValueState.Live)
+                        {
                             value.CurrentState = CacheValueState.Refreshing;
                         }
                     }
-                    Task.Factory.StartNew(() => value.Value = dataProvider()).ContinueWith(x => 
+                    Task.Factory.StartNew(() => value.Value = dataProvider()).ContinueWith(x =>
                     {
                         value.CurrentState = CacheValueState.Live;
-                        value.ExpirationTime = GetExpirationTime(cacheTimeInMinutes);
-                        MemoryCache.Default.Set(cacheKey, value, DateTime.Now.AddMinutes(cacheTimeInMinutes * 2));
+                        value.ExpirationTime = GetRefreshTime(refreshIn);
+                        MemoryCache.Default.Set(cacheKey, value, Clock.Now().Add(Settings.MaxTimeInCache));
                     });
                 }
             }
             return value.Value;
         }
 
-
-        private static DateTime GetExpirationTime(int lifeTimeMinutes)
+        private static object LockForKey(string key)
         {
-            return Clock.UtcNow().AddMinutes(lifeTimeMinutes);
+            return keyLockDictionary.GetOrAdd(key, new object());
+        }
+
+        private static DateTime GetRefreshTime(TimeSpan refreshIn)
+        {
+            return Clock.UtcNow().Add(refreshIn);
         }
 
         private static CacheValue<T> GetCacheValueFor<T>(string key)
         {
             return MemoryCache.Default[key] as CacheValue<T>;
         }
-    }
-
-    class CacheValue<T>
-    {
-        private CacheValueState currentState = CacheValueState.Loading;
-
-        public T Value { get; set; }
-        public DateTime ExpirationTime { get; set; }
-        public CacheValueState CurrentState
-        {
-            get { return currentState; }
-            set { currentState = value; }
-        }
-    }
-
-    enum CacheValueState
-    {
-        Live,
-        Loading,
-        Refreshing
     }
 }
