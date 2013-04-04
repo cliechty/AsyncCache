@@ -4,7 +4,7 @@ namespace AsyncCache
 {
     public class CacheSettings
     {
-        private TimeSpan maxTimeInCache = TimeSpan.FromMinutes(10);
+        private TimeSpan maxTimeInCache = TimeSpan.FromHours(1);
 
         public TimeSpan MaxTimeInCache
         {

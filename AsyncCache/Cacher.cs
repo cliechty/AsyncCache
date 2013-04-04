@@ -5,7 +5,7 @@ using System.Threading.Tasks;
 
 namespace AsyncCache
 {
-    public class Cacher
+    public static class Cacher
     {
         private static ConcurrentDictionary<string, object> keyLockDictionary = new ConcurrentDictionary<string, object>();
         private static CacheSettings settings = new CacheSettings();
@@ -72,11 +72,15 @@ namespace AsyncCache
                             value.CurrentState = CacheValueState.Refreshing;
                         }
                     }
-                    Task.Factory.StartNew(() => value.Value = dataProvider()).ContinueWith(x =>
+                    Task.Factory.StartNew(dataProvider).ContinueWith(x =>
                     {
-                        value.CurrentState = CacheValueState.Live;
-                        value.ExpirationTime = GetRefreshTime(refreshIn);
-                        MemoryCache.Default.Set(cacheKey, value, Clock.Now().Add(Settings.MaxTimeInCache));
+                        lock (keyLockObj)
+                        {
+                            value.Value = x.Result;
+                            value.CurrentState = CacheValueState.Live;
+                            value.ExpirationTime = GetRefreshTime(refreshIn);
+                            MemoryCache.Default.Set(cacheKey, value, Clock.Now().Add(Settings.MaxTimeInCache));
+                        }
                     });
                 }
             }
@@ -96,6 +100,13 @@ namespace AsyncCache
         private static CacheValue<T> GetCacheValueFor<T>(string key)
         {
             return MemoryCache.Default[key] as CacheValue<T>;
+        }
+
+        public static void Remove(string key)
+        {
+            lock (LockForKey(key)) {
+                MemoryCache.Default.Remove(key);
+            }
         }
     }
 }
