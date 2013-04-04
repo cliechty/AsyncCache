@@ -63,7 +63,6 @@
   </Choose>
   <ItemGroup>
     <Compile Include="CacherSpecs\Settings\IsConfigurable.cs" />
-    <Compile Include="CacheSpecs.cs" />
     <Compile Include="Clock\ClockSpecs.cs" />
     <Compile Include="ITestable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
