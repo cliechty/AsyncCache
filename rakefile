@@ -21,7 +21,7 @@ desc "Create the nuget package"
 nugetpack :pack => :build do |nuget|
     nuget.command = ".nuget/nuget.exe"
     nuget.nuspec = "AsyncCache/AsyncCache.csproj"
-    nuget.parameters = "-Version " + bumper_version.to_s
+    nuget.parameters = "-Version " + bumper_version.to_s + " -Prop Configuration=Release"
 end
 
 assemblyinfo :assemblyinfo do |asm|
