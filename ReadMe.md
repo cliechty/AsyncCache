@@ -1,27 +1,36 @@
 # Async Cache
 
-.net Memory Cache wrapper which will refresh the cache in a background thread without blocking after a specified time if the cached value is requested.``
+.net Memory Cache wrapper that offloads refreshing cached values to background threads without blocking the caller.
+This library is useful for caching operations which are time consuming and/or the results don't change often.
 
-Installation
-============
+## Installation
 
 Install using nuget. The Package is named AsyncCache (not yet available)
 
-Usage
-=====
+## Usage
+
+### Adding and Retriving Values
+Adding and retriving cached values uses the same function call.
 
 ``` c#
-string value = Cacher.Get(cacheKey: "theKey", 
-    cachedOperation: () => someSlowFunctionCall("parameter"), 
-    refreshIn: Timespan.FromMinutes(10));
+String value = Cacher.Get(cacheKey: "theKey", 
+                        cachedOperation: () => someSlowFunctionCall("parameter"), 
+                        refreshIn: Timespan.FromMinutes(10));
 ```
 
-The code above will cause Cacher to make 1 call to someSlowFunctionCall the first time the code is executed. If there are multiple threads calling Cacher.Get with the same key while someSlowFunction is processing the initial load they will be blocked until someSlowFunction returns. 
-'someSlowFunction' will not be called again until 10 minutes have passed and there is another call to Cacher.Get with the cacheKey 'theKey'
-If you call Cacher.Get with the cacheKey: 'theKey' again Cacher will return the cached value.
+The code above will request the value for 'theKey' in the cache.
 
-Todo
-====
-* Rewrite and improve tests
+If the value is cached, then the cached value is returned.
+
+If the value is not cached, the cachedOperation Func<T> will be called to supply and cache the value.
+
+If refresh time has passed, then the currently cached value is returned and the cachedOperation Func<T> will be called in a background thread to refresh the cached value.
+
+### Removing Values
+``` c#
+Cacher.Remove(cacheKey: "theKey");
+```
+
+## Todo
 * Documentation
 * Example project / demo
