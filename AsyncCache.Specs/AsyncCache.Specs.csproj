@@ -65,6 +65,7 @@
     <Compile Include="..\SharedAssemblyInfo.cs">
       <Link>SharedAssemblyInfo.cs</Link>
     </Compile>
+    <Compile Include="CacherSpecs\Get\WhenDelegateThrowsException.cs" />
     <Compile Include="CacherSpecs\Settings\IsConfigurable.cs" />
     <Compile Include="Clock\ClockSpecs.cs" />
     <Compile Include="ITestable.cs" />
