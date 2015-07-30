@@ -62,26 +62,22 @@ namespace AsyncCache
                         value = GetCacheValueFor<T>(cacheKey);
                     }
                 }
+
                 if (value.CurrentState == CacheValueState.Live && Clock.UtcNow() >= value.ExpirationTime)
                 {
-                    // Time to reload
-                    lock (keyLockObj)
+                    if (CheckAndUpdateState(keyLockObj, value, CacheValueState.Live, CacheValueState.Refreshing))
                     {
-                        if (value.CurrentState == CacheValueState.Live)
+                        Task.Factory.StartNew(dataProvider).ContinueWith(x =>
                         {
-                            value.CurrentState = CacheValueState.Refreshing;
-                        }
+                            lock (keyLockObj)
+                            {
+                                value.Value = x.Result;
+                                value.CurrentState = CacheValueState.Live;
+                                value.ExpirationTime = GetRefreshTime(refreshIn);
+                                MemoryCache.Default.Set(cacheKey, value, Clock.Now().Add(Settings.MaxTimeInCache));
+                            }
+                        });
                     }
-                    Task.Factory.StartNew(dataProvider).ContinueWith(x =>
-                    {
-                        lock (keyLockObj)
-                        {
-                            value.Value = x.Result;
-                            value.CurrentState = CacheValueState.Live;
-                            value.ExpirationTime = GetRefreshTime(refreshIn);
-                            MemoryCache.Default.Set(cacheKey, value, Clock.Now().Add(Settings.MaxTimeInCache));
-                        }
-                    });
                 }
             }
             return value.Value;
@@ -100,6 +96,20 @@ namespace AsyncCache
         private static CacheValue<T> GetCacheValueFor<T>(string key)
         {
             return MemoryCache.Default[key] as CacheValue<T>;
+        }
+
+        private static bool CheckAndUpdateState<T>(object keyLockObj, CacheValue<T> value, CacheValueState currentState, CacheValueState newState)
+        {
+            lock(keyLockObj)
+            {
+                if(value.CurrentState == currentState)
+                {
+                    value.CurrentState = newState;
+                    return true;
+                }
+            }
+
+            return false;
         }
 
         public static void Remove(string key)

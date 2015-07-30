@@ -78,6 +78,32 @@ namespace AsyncCache.Specs.CacherSpecs.Get
             value.Should().Be(key);
 
             taskCompletion.SetResult("newValue");
+
+            // sleep to let internal thread in sherlock finalize the new cache value
+            Thread.Sleep(500); 
+        }
+
+        [TestMethod]
+        public void RefreshValueInMultiThreadApp()
+        {
+            //Arrange
+            var tcs = new TaskCompletionSource<string>();
+
+            var fake = Substitute.For<ITestable>();
+            fake.LongRunningProcess(key).Returns(x => tcs.Task.Result);
+
+            var task1 = Task.Factory.StartNew(() => Cacher.Get(key, () => fake.LongRunningProcess(key)));
+            var task2 = Task.Factory.StartNew(() => Cacher.Get(key, () => fake.LongRunningProcess(key)));
+
+            Task.WaitAll(task1, task2);
+            
+            tcs.SetResult("newValue");
+
+            // Sleep to let internal thread runs the code to update the cache for the key
+            Thread.Sleep(1000);
+
+            // it should not try to update the expired values more than once
+            fake.Received(1).LongRunningProcess(key);
         }
     }
 }
