@@ -79,5 +79,34 @@ namespace AsyncCache.Specs.CacherSpecs.Get
 
             taskCompletion.SetResult("newValue");
         }
+
+        [TestMethod]
+        public void RefreshValueInMultiThreadApp()
+        {
+            //Arrange
+            var multiKey = "muitiThread";
+            //Set cache value
+            Cacher.Get(multiKey, () => multiKey, TimeSpan.FromMilliseconds(10));
+
+            // Make it expired
+            Clock.UtcNow = () => DateTime.UtcNow.AddMinutes(1);
+
+            var tcs = new TaskCompletionSource<string>();
+
+            var fake = Substitute.For<ITestable>();
+            fake.LongRunningProcess(multiKey).Returns(x => tcs.Task.Result);
+
+            // Act
+            var task1 = Task.Factory.StartNew(() => Cacher.Get(multiKey, () => fake.LongRunningProcess(multiKey)));
+            var task2 = Task.Factory.StartNew(() => Cacher.Get(multiKey, () => fake.LongRunningProcess(multiKey)));
+
+            Task.WaitAll(task1, task2);
+            
+            // Assert
+            tcs.SetResult("newValue");
+
+            // it should not try to update the expired values more than once
+            fake.Received(1).LongRunningProcess(multiKey);
+        }
     }
 }
