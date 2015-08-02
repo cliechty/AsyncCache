@@ -1,3 +1,5 @@
+<img src="https://ci.appveyor.com/api/projects/status/github/cliechty/AsyncCache?branch=master&amp;svg=true" alt="Build status">
+ 
 # Async Cache
 
 .net Memory Cache wrapper that offloads refreshing cached values to background threads without blocking the caller.
