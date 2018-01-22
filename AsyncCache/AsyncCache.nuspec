@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>$id$</id>
+    <id>chrisl.AsyncCache</id>
     <version>$version$</version>
-    <title>$title$</title>
+    <title>chrisl.AsyncCache</title>
     <authors>$author$</authors>
     <owners>$author$</owners>
     <projectUrl>https://github.com/cliechty/AsyncCache</projectUrl>
