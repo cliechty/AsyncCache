@@ -1,0 +1,5 @@
+assembly-informational-format: '{MajorMinorPatch}-{BranchName}'
+mode: ContinuousDelivery
+branches: {}
+ignore:
+  sha: []
