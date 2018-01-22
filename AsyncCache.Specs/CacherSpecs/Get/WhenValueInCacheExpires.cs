@@ -7,6 +7,7 @@ using NSubstitute;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using System.Threading.Tasks;
 using System.Threading;
+using System.Runtime.Caching;
 
 namespace AsyncCache.Specs.CacherSpecs.Get
 {
@@ -34,7 +35,8 @@ namespace AsyncCache.Specs.CacherSpecs.Get
         [TestCleanup]
         public void TestCleanup()
         {
-            Cacher.Remove(key);
+            //Cacher.Remove(key);
+            MemoryCache.Default.Trim(100); // Remove 100% of the cached entries;
             Clock.UtcNow = () => DateTime.UtcNow;
         }
 
@@ -84,29 +86,21 @@ namespace AsyncCache.Specs.CacherSpecs.Get
         public void RefreshValueInMultiThreadApp()
         {
             //Arrange
-            var multiKey = "muitiThread";
-            //Set cache value
-            Cacher.Get(multiKey, () => multiKey, TimeSpan.FromMilliseconds(10));
-
-            // Make it expired
-            Clock.UtcNow = () => DateTime.UtcNow.AddMinutes(1);
-
-            var tcs = new TaskCompletionSource<string>();
-
             var fake = Substitute.For<ITestable>();
-            fake.LongRunningProcess(multiKey).Returns(x => tcs.Task.Result);
+            fake.LongRunningProcess(key).Returns(x => taskCompletion.Task.Result);
 
             // Act
-            var task1 = Task.Factory.StartNew(() => Cacher.Get(multiKey, () => fake.LongRunningProcess(multiKey)));
-            var task2 = Task.Factory.StartNew(() => Cacher.Get(multiKey, () => fake.LongRunningProcess(multiKey)));
+            var task1 = Task.Factory.StartNew(() => Cacher.Get(key, () => fake.LongRunningProcess(key)));
+            var task2 = Task.Factory.StartNew(() => Cacher.Get(key, () => fake.LongRunningProcess(key)));
 
             Task.WaitAll(task1, task2);
-            
+            taskCompletion.Task.Wait(10);
+
             // Assert
-            tcs.SetResult("newValue");
+            taskCompletion.SetResult("newValue");
 
             // it should not try to update the expired values more than once
-            fake.Received(1).LongRunningProcess(multiKey);
+            fake.Received(1).LongRunningProcess(key);
         }
     }
 }
