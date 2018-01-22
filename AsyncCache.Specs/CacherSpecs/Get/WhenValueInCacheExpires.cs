@@ -23,6 +23,9 @@ namespace AsyncCache.Specs.CacherSpecs.Get
         {
             taskCompletion = new TaskCompletionSource<string>();
 
+            // Make the Clock a static time to aid in time based tests
+            Clock.UtcNow = () => DateTime.UtcNow;
+
             Cacher.Remove(key);
 
             //Set cache value
@@ -89,12 +92,17 @@ namespace AsyncCache.Specs.CacherSpecs.Get
             var fake = Substitute.For<ITestable>();
             fake.LongRunningProcess(key).Returns(x => taskCompletion.Task.Result);
 
+            Clock.UtcNow = () => DateTime.UtcNow;
+            Cacher.Remove(key);
+            Cacher.Get(key, () => "orig", TimeSpan.FromMilliseconds(1));
+
+            Clock.UtcNow = () => DateTime.UtcNow.AddMinutes(1);
+
             // Act
             var task1 = Task.Factory.StartNew(() => Cacher.Get(key, () => fake.LongRunningProcess(key)));
             var task2 = Task.Factory.StartNew(() => Cacher.Get(key, () => fake.LongRunningProcess(key)));
 
             Task.WaitAll(task1, task2);
-            taskCompletion.Task.Wait(10);
 
             // Assert
             taskCompletion.SetResult("newValue");
