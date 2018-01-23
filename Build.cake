@@ -15,11 +15,7 @@ Task("UpdateAssemblyInfo")
 	.Does(() =>
 	{
 		GitVersion(new GitVersionSettings {
-			UpdateAssemblyInfo = true,
-			EnvironmentVariables = new Dictionary<string, string> 
-			{ 
-				{ "assembly-informational-format", "{MajorMinorPatch}+{BranchName}" }
-			}
+			UpdateAssemblyInfo = true
 		});
 	});
 
@@ -45,7 +41,7 @@ Task("Test")
 	.IsDependentOn("Compile")
 	.Does(() =>
 	{
-		MSTest("./AsyncCache.Specs/bin/Release/AsyncCache.Specs.dll");
+		VSTest("./AsyncCache.Specs/bin/Release/AsyncCache.Specs.dll");
 	});
 
 Task("Package")
