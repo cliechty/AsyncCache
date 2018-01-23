@@ -41,6 +41,7 @@ namespace AsyncCache.Specs.CacherSpecs.Get
             //Cacher.Remove(key);
             MemoryCache.Default.Trim(100); // Remove 100% of the cached entries;
             Clock.UtcNow = () => DateTime.UtcNow;
+            Cacher.SetTaskScheduler(TaskScheduler.Default);
         }
 
         [TestMethod]
@@ -89,7 +90,13 @@ namespace AsyncCache.Specs.CacherSpecs.Get
         public void RefreshValueInMultiThreadApp()
         {
             //Arrange
+            // this task scheduler will allow us to control when the Tasks generated
+            // by the Cacher actually run.
+            DeterministicTaskScheduler scheduler = new DeterministicTaskScheduler();
+            Cacher.SetTaskScheduler(scheduler);
+
             var fake = Substitute.For<ITestable>();
+            var taskCompletion = new TaskCompletionSource<string>();
             fake.LongRunningProcess(key).Returns(x => taskCompletion.Task.Result);
 
             Clock.UtcNow = () => DateTime.UtcNow;
@@ -103,10 +110,10 @@ namespace AsyncCache.Specs.CacherSpecs.Get
             var task2 = Task.Factory.StartNew(() => Cacher.Get(key, () => fake.LongRunningProcess(key)));
 
             Task.WaitAll(task1, task2);
+            taskCompletion.SetResult("newValue");
+            scheduler.RunTasksUntilIdle();
 
             // Assert
-            taskCompletion.SetResult("newValue");
-
             // it should not try to update the expired values more than once
             fake.Received(1).LongRunningProcess(key);
         }

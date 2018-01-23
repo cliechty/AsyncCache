@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Runtime.Caching;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AsyncCache
@@ -10,6 +11,16 @@ namespace AsyncCache
         private static ConcurrentDictionary<string, object> keyLockDictionary = new ConcurrentDictionary<string, object>();
         private static CacheSettings settings = new CacheSettings();
         private static object settingsLock = new object();
+        private static object taskSchedulerLock = new object();
+        private static TaskScheduler taskScheduler = TaskScheduler.Default;
+
+        public static void SetTaskScheduler(TaskScheduler scheduler)
+        {
+            lock(taskSchedulerLock)
+            {
+                taskScheduler = scheduler;
+            }
+        }
 
         public static CacheSettings Settings
         {
@@ -67,16 +78,21 @@ namespace AsyncCache
                 {
                     if (CheckAndUpdateState(keyLockObj, value, CacheValueState.Live, CacheValueState.Refreshing))
                     {
-                        Task.Factory.StartNew(dataProvider).ContinueWith(x =>
-                        {
-                            lock (keyLockObj)
+                        Task.Factory
+                            .StartNew(dataProvider, 
+                                CancellationToken.None,
+                                TaskCreationOptions.None,
+                                taskScheduler)
+                            .ContinueWith(x =>
                             {
-                                value.Value = x.Result;
-                                value.CurrentState = CacheValueState.Live;
-                                value.ExpirationTime = GetRefreshTime(refreshIn);
-                                MemoryCache.Default.Set(cacheKey, value, Clock.Now().Add(Settings.MaxTimeInCache));
-                            }
-                        });
+                                lock (keyLockObj)
+                                {
+                                    value.Value = x.Result;
+                                    value.CurrentState = CacheValueState.Live;
+                                    value.ExpirationTime = GetRefreshTime(refreshIn);
+                                    MemoryCache.Default.Set(cacheKey, value, Clock.Now().Add(Settings.MaxTimeInCache));
+                                }
+                            });
                     }
                 }
             }

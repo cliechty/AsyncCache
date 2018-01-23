@@ -69,6 +69,7 @@
     <Compile Include="CacherSpecs\Get\WhenDelegateThrowsException.cs" />
     <Compile Include="CacherSpecs\Settings\IsConfigurable.cs" />
     <Compile Include="Clock\ClockSpecs.cs" />
+    <Compile Include="DeterministicTaskScheduler.cs" />
     <Compile Include="ITestable.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="CacherSpecs\Remove\WhenRemove.cs" />
